@@ -49,18 +49,29 @@ namespace Bank.WebAPI.Backend.Services
 
         public Account GetByAccountNumber(string AccountNumber)
         {
-            throw new NotImplementedException();
+            var account = _dbContext.Accounts.Where(x => x.AccountNumberGenerated == AccountNumber).FirstOrDefault();
+            if(account == null)
+            {
+                return null;
+            }
+            return account;
         }
 
         public Account GetById(int id)
         {
-            throw new NotImplementedException();
+            var account = _dbContext.Accounts.Where(x => x.Id == id).FirstOrDefault();
+            if(account == null)
+            {
+                return null;
+            }
+            return account;
+            //return _dbContext.Accounts.FirstOrDefault(ac => ac.Id == id);
         }
 
         //CRUD IMPLEMENTATION
         public IEnumerable<Account> GetAllAccounts()
         {
-            throw new NotImplementedException();
+            return _dbContext.Accounts.ToList();
         }
         public Account Create(Account account, string Pin, string ConfirmPin)
         {
@@ -95,11 +106,52 @@ namespace Bank.WebAPI.Backend.Services
         }
         public void Update(Account account, string Pin = null)
         {
-            throw new NotImplementedException();
+            var accountToUpdate = _dbContext.Accounts.Where(x => x.Email == account.Email).SingleOrDefault();
+            if(accountToUpdate == null)
+            {
+                throw new ApplicationException("Аккаунта не существует.");
+            }
+            //если есть, смотрим что хотим поменять
+            if(!string.IsNullOrWhiteSpace(account.Email))
+            {
+                //обновить Email
+                if(_dbContext.Accounts.Any(x=>x.Email == account.Email))
+                {
+                    throw new ApplicationException("Эта почта " + account.Email + " уже используется.");
+                }
+                accountToUpdate.Email = account.Email;
+            }
+
+            //разрешаем изменить только телефон и мыло 
+            if(!string.IsNullOrWhiteSpace(account.PhoneNumber))
+            {
+                if(_dbContext.Accounts.Any(p=>p.PhoneNumber == account.PhoneNumber))
+                {
+                    throw new ApplicationException("Этот телефон уже используется");
+                }
+                accountToUpdate.PhoneNumber = account.PhoneNumber;
+            }
+
+            if (!string.IsNullOrWhiteSpace(Pin))
+            {
+                byte[] pinHash, pinSalt;
+                CreatePinHash(Pin, out pinHash, out pinSalt);
+                accountToUpdate.PinHash = pinHash;
+                accountToUpdate.PinSalt = pinSalt;
+            }
+
+            //обновляем БД
+            _dbContext.Accounts.Update(accountToUpdate);
+            _dbContext.SaveChanges();
         }
         public void Delete(int id)
         {
-            throw new NotImplementedException();
+            var account = _dbContext.Accounts.Find(id);
+            if(account != null)
+            {
+                _dbContext.Accounts.Remove(account);
+                _dbContext.SaveChanges();
+            }
         }
     }
 }
